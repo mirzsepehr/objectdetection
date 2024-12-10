@@ -1,0 +1,9 @@
+services:
+  objdet:
+    container_name: objdet
+    image: mirzsepehr/objdet
+    ports:
+      - "5000:5000"
+    build:
+      context: .
+      dockerfile: Dockerfile
