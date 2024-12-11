@@ -43,6 +43,8 @@ allowed_image_types = ["image/jpeg", "image/png", "image/gif"]
 torch.hub._validate_not_a_forked_repo=lambda a,b,c: True
 model_cellphone = torch.hub.load(YOLOV5MODEL, 'custom', path=CELLPHONEMODEL_PATH, force_reload=True, source='local', device='cpu') 
 model_seatbelt = torch.hub.load(YOLOV5MODEL, 'custom', path=SEATBELTMODEL_PATH, force_reload=True, source='local', device='cpu') 
+model_cellphone.conf = 0.25
+model_seatbelt.conf = 0.25
 
 #write exceptions here:
 class notReceivedException(Exception):
@@ -221,12 +223,6 @@ async def detect_seatbelt(file:UploadFile=File(...), verbose:bool = False):
         })
         
     return {"phone detections": seatbelt_detections if verbose else bool(seatbelt_detections)}
-
-
-def test_read_main():
-    response = client.get("/")
-    assert response.status_code == 200
-    assert response.json() == {"msg": "Hello World"}
 
 
 if __name__ == "__main__":

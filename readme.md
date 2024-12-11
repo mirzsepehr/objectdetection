@@ -13,7 +13,7 @@ This project has written in **[fastapi](https://fastapi.tiangolo.com/)** and **[
 You can dive deep into the code and see the code's explanation in the main.ipynb file in the "app" folder.
 
 ## Training Process
-Training yolov5 models are easy to learn which you can find at __[this link](https://docs.ultralytics.com/yolov5/quickstart_tutorial/)__. You can pass some hyperparameters in order to train your model in a decent way by **--hyps** command. You should write your hyperparameters in a YAML file format. However, there are some default hyperparameter files you can find in the ultralytics/yolov5 project.
+Training yolov5 models are easy to learn which you can find at __[this link](https://docs.ultralytics.com/yolov5/quickstart_tutorial/)__ or see the tutorial.ipynb file inside the yolov5 folder. You can pass some hyperparameters in order to train your model in a decent way by **--hyps** command. You should write your hyperparameters in a YAML file format. However, there are some default hyperparameter files you can find in the ultralytics/yolov5 project.
 > git  clone  https://github.com/ultralytics/yolov5
 
 Go to the following path
