@@ -34,9 +34,10 @@ CELLPHONEMODEL_PATH = Path(str('/objdetection/app/best.pt'))
 SEATBELTMODEL_PATH = Path(str('/objdetection/app/best_seatbelt.pt'))
 YOLOV5MODEL = Path('/objdetection/app/yolov5')
 client = TestClient(app)
-IMAGEDIR = "fastapi-images/"
+IMAGEDIR = "/objdetection/app/fastapi-images/"
 image_names = []
 allowed_image_types = ["image/jpeg", "image/png", "image/gif"]
+image_dict = {}
 
 
 #load models from saved '.pt' path 
@@ -102,31 +103,35 @@ async def detect_objects(file: UploadFile = File(...), verbose:bool = False):
         #generate file name and save it.
         file.filename = f"{uuid.uuid4()}"
         # image.save(f"{IMAGEDIR}{file.filename}.jpg")
-        with Image.open(f"{IMAGEDIR}{file.filename}.jpg") as f:
-            frame = np.array(f)
-            #get the location of the detected object in the image:
-            for box in results_cellphone.xyxy[0]: 
-                if box[5]==0:
-                    # detection = True
-                    xB = int(box[2])
-                    xA = int(box[0])
-                    yB = int(box[3])
-                    yA = int(box[1])
-                    rect = cv2.rectangle(frame, (xA, yA), (xB, yB), (0, 255, 0), 2)
-                    # rect.save(f"{IMAGEDIR}{file.filename}_cellphone.jpg")
-                    im = Image.fromarray(rect)
-                    # im.save(f"{IMAGEDIR}{file.filename}_cellphone.jpg")
-                    # image_names.append(f"{file.filename}_cellphone.jpg")
-            for box in results_seatbelt.xyxy[0]: 
-                if box[5]==0:
-                    xB = int(box[2])
-                    xA = int(box[0])
-                    yB = int(box[3])
-                    yA = int(box[1])
-                    #draw a rectabgle around the detected object and save it somewhere:
-                    rect = cv2.rectangle(frame, (xA, yA), (xB, yB), (0, 255, 0), 2)
-                    im = Image.fromarray(rect)
-                    # im.save(f"{IMAGEDIR}{file.filename}_seatbelt.jpg")
+        image_dict[f"{file.filename}"] = [image, image]
+        # with Image.open(f"{IMAGEDIR}{file.filename}.jpg") as f:
+        frame = np.array(image)
+        #get the location of the detected object in the image:
+        for box in results_cellphone.xyxy[0]: 
+            if box[5]==0:
+                # detection = True
+                xB = int(box[2])
+                xA = int(box[0])
+                yB = int(box[3])
+                yA = int(box[1])
+                rect = cv2.rectangle(frame, (xA, yA), (xB, yB), (0, 255, 0), 2)
+                # rect.save(f"{IMAGEDIR}{file.filename}_cellphone.jpg")
+                im = Image.fromarray(rect)
+                image_dict[f"{file.filename}"][0] = im
+                # im.save(f"{IMAGEDIR}{file.filename}_cellphone.jpg")
+                image_names.append(f"{file.filename}_cellphone.jpg")
+        for box in results_seatbelt.xyxy[0]: 
+            if box[5]==0:
+                xB = int(box[2])
+                xA = int(box[0])
+                yB = int(box[3])
+                yA = int(box[1])
+                #draw a rectabgle around the detected object and save it somewhere:
+                rect = cv2.rectangle(frame, (xA, yA), (xB, yB), (0, 255, 0), 2)
+                im = Image.fromarray(rect)
+                image_dict[f"{file.filename}"][1] = im
+
+                # im.save(f"{IMAGEDIR}{file.filename}_seatbelt.jpg")
             
     seatbelt_detections = []
     phone_detections = []
