@@ -13,7 +13,7 @@ import numpy as np
 import uvicorn
 from fastapi.testclient import TestClient
 import pathlib
-from pathlib import Path, PosixPath, WindowsPath
+from pathlib import Path
 import sys
 import platform
 
