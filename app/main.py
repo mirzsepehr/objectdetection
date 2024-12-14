@@ -2,7 +2,9 @@ from fastapi import (FastAPI,
                      File, 
                      UploadFile, 
                      Request, 
-                     HTTPException)
+                     HTTPException, 
+                     Response)
+from starlette.responses import StreamingResponse
 from fastapi.responses import JSONResponse
 import torch
 from PIL import Image
@@ -16,6 +18,7 @@ import pathlib
 from pathlib import Path
 import sys
 import platform
+import base64
 
 
 
@@ -30,8 +33,8 @@ else:
 
 app = FastAPI()
 
-CELLPHONEMODEL_PATH = Path(str('/objdetection/app/best.pt'))
-SEATBELTMODEL_PATH = Path(str('/objdetection/app/best_seatbelt.pt'))
+CELLPHONEMODEL_PATH = Path(str('/objdetection/app/best_cellphone.pt'))
+SEATBELTMODEL_PATH = Path(str('/objdetection/app/best.pt'))
 YOLOV5MODEL = Path('/objdetection/app/yolov5')
 client = TestClient(app)
 IMAGEDIR = "/objdetection/app/fastapi-images/"
@@ -46,6 +49,24 @@ model_cellphone = torch.hub.load(YOLOV5MODEL, 'custom', path=CELLPHONEMODEL_PATH
 model_seatbelt = torch.hub.load(YOLOV5MODEL, 'custom', path=SEATBELTMODEL_PATH, force_reload=True, source='local', device='cpu') 
 model_cellphone.conf = 0.25
 model_seatbelt.conf = 0.25
+
+async def convert2cv2(pil_image):
+    """
+    converts PIL images
+    to opencv images
+    """
+    image = pil_image.convert('RGB')
+    opencvImage=np.array(image)
+    if opencvImage is None or np.all(opencvImage==0):
+        return np.zeros(shape=(150, 150, 3))
+    opencvImage=cv2.cvtColor(opencvImage, cv2.COLOR_BGR2RGB)
+    return opencvImage
+
+# async def encode_image_2base64(image):
+#     buffered = io.BytesIO()
+#     image.save(buffered, format='JPEG')
+#     image_byte_arr = buffered.getvalue()
+#     return base64.b64decode(image_byte_arr).decode("utf-8")
 
 #write exceptions here:
 class notReceivedException(Exception):
@@ -93,7 +114,7 @@ async def detect_objects(file: UploadFile = File(...), verbose:bool = False):
     #read images
     image_bytes = await file.read()
     image = Image.open(io.BytesIO(image_bytes))
-    image = image.rotate(180)
+    # image = image.rotate(180)
 
     #load models
     results_seatbelt = model_seatbelt(image)
@@ -103,7 +124,8 @@ async def detect_objects(file: UploadFile = File(...), verbose:bool = False):
         #generate file name and save it.
         file.filename = f"{uuid.uuid4()}"
         # image.save(f"{IMAGEDIR}{file.filename}.jpg")
-        image_dict[f"{file.filename}"] = [image, image]
+        image_names.append(f"{file.filename}")
+        image_dict[f"{file.filename}"] = [0, 0]
         # with Image.open(f"{IMAGEDIR}{file.filename}.jpg") as f:
         frame = np.array(image)
         #get the location of the detected object in the image:
@@ -117,9 +139,8 @@ async def detect_objects(file: UploadFile = File(...), verbose:bool = False):
                 rect = cv2.rectangle(frame, (xA, yA), (xB, yB), (0, 255, 0), 2)
                 # rect.save(f"{IMAGEDIR}{file.filename}_cellphone.jpg")
                 im = Image.fromarray(rect)
-                image_dict[f"{file.filename}"][0] = im
+                image_dict[f"{file.filename}"][0] =im
                 # im.save(f"{IMAGEDIR}{file.filename}_cellphone.jpg")
-                image_names.append(f"{file.filename}_cellphone.jpg")
         for box in results_seatbelt.xyxy[0]: 
             if box[5]==0:
                 xB = int(box[2])
@@ -180,7 +201,7 @@ async def detect_cellphone(file: UploadFile = File(...), verbose:bool=False):
                         )
     image_bytes = await file.read()
     image = Image.open(io.BytesIO(image_bytes))
-    image = image.rotate(180)
+    # image = image.rotate(180)
     results_cellphone = model_cellphone(image)
     phone_detections = []
     for result in results_cellphone.xyxy[0]:
@@ -216,7 +237,7 @@ async def detect_seatbelt(file:UploadFile=File(...), verbose:bool = False):
                         )
     image_bytes = await file.read()
     image = Image.open(io.BytesIO(image_bytes))
-    image = image.rotate(180)
+    # image = image.rotate(180)
     results_seatbelt = model_seatbelt(image)
     seatbelt_detections = []
     for result in results_seatbelt.xyxy[0]:
@@ -227,7 +248,27 @@ async def detect_seatbelt(file:UploadFile=File(...), verbose:bool = False):
             "bbox": [x1, y1, x2, y2]
         })
         
-    return {"phone detections": seatbelt_detections if verbose else bool(seatbelt_detections)}
+    return {"seatbelt detections": seatbelt_detections if verbose else bool(seatbelt_detections)}
+
+@app.get("/display", responses = {
+        200: {
+            "content": {"image/png": {}}
+        }
+    },response_class=Response)
+async def display_images():
+    # print(image_dict)
+    images = image_dict[image_names[-1]]
+    # if not images[0]:
+    #     raise notReceived_exception_handler(name = "file")
+    print(type(images[0]))
+    cvimg = await convert2cv2(images[0])
+    res, im_png_cellphone = cv2.imencode(".jpg", cvimg)
+    cvimg = await convert2cv2(images[1])
+    res, im_png_seatbelt = cv2.imencode(".jpg", cvimg)
+    return StreamingResponse(io.BytesIO(im_png_seatbelt.tobytes()), media_type="image/jpeg")
+    # image_bytes_cell: bytes = Image.open(image[0])
+    # image_bytes2: bytes = image_dict[image_names[-1]][1]
+    # return {Response(content=image_bytes_cell, media_type="image/jpeg")}
 
 
 if __name__ == "__main__":
